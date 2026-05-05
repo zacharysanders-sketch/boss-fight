@@ -13,7 +13,7 @@ class Player {
     this.usedSpecial = false;
   }
 
-  draw(ctx, smallFont) {
+  draw(ctx) {
     // Body
     ctx.fillStyle = COLORS.BLUE;
     ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -35,29 +35,29 @@ class Player {
 
     // Health Bar
     const barWidth = 150;
-    const ratio = this.health / this.maxHealth;
+    const ratio = Math.max(0, this.health / this.maxHealth);
     ctx.fillStyle = COLORS.RED;
     ctx.fillRect(this.x - 10, this.y - 30, barWidth, 15);
     ctx.fillStyle = COLORS.GREEN;
     ctx.fillRect(this.x - 10, this.y - 30, barWidth * ratio, 15);
 
     ctx.fillStyle = COLORS.WHITE;
-    ctx.font = "16px Arial";
-    ctx.fillText(`${Math.floor(this.health)}/${this.maxHealth}`, this.x + 20, this.y - 16);
+    ctx.font = "bold 16px Arial";
+    ctx.fillText(`${Math.floor(this.health)}`, this.x + 25, this.y - 16);
   }
 
   attack(boss) {
     const damage = this.attack + Math.floor(Math.random() * 14) - 5;
-    boss.health -= Math.max(0, damage);
+    boss.health = Math.max(0, boss.health - damage);
     this.isAttacking = true;
-    this.attackTimer = 15;
+    this.attackTimer = 12;
     return damage;
   }
 
   specialAttack(boss) {
     if (this.usedSpecial) return 0;
     const damage = this.attack + 25 + Math.floor(Math.random() * 16);
-    boss.health -= damage;
+    boss.health = Math.max(0, boss.health - damage);
     this.usedSpecial = true;
     this.isAttacking = true;
     this.attackTimer = 20;
