@@ -1,9 +1,7 @@
 const WIDTH = 800;
 const HEIGHT = 600;
-const FPS = 60;
 
 const COLORS = {
-  BLACK: "#000000",
   WHITE: "#ffffff",
   RED: "#c80000",
   GREEN: "#00c800",
