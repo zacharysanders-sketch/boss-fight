@@ -2,20 +2,260 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shadow Dragon Boss Fight</title>
   <style>
-    body { margin: 0; background: #0a0a1f; font-family: Arial, sans-serif; }
-    canvas { display: block; margin: 20px auto; border: 3px solid #444; }
+    body { margin: 0; background: #0a0a1f; font-family: Arial, sans-serif; text-align: center; }
+    canvas { border: 4px solid #444; margin: 20px auto; display: block; }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-  <script src="constants.js"></script>
-  <script src="utils.js"></script>
-  <script src="player.js"></script>
-  <script src="boss.js"></script>
-  <script src="main.js"></script>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const WIDTH = 800;
+    const HEIGHT = 600;
+    const COLORS = { BLACK: "#000", WHITE: "#fff", RED: "#c80000", GREEN: "#00c800", BLUE: "#0064ff", PURPLE: "#9600c8", YELLOW: "#ffd600", DARK_BG: "#141428" };
+
+    class Player {
+      constructor() {
+        this.x = 150; this.y = 350; this.width = 60; this.height = 80;
+        this.health = 100; this.maxHealth = 100; this.attack = 22;
+        this.isAttacking = false; this.attackTimer = 0;
+        this.defending = false; this.usedSpecial = false;
+        this.isRaging = false; this.rageTimer = 0;
+      }
+
+      update() {
+        if (this.isRaging) { this.rageTimer--; if (this.rageTimer <= 0) this.isRaging = false; }
+        if (this.isAttacking) { this.attackTimer--; if (this.attackTimer <= 0) this.isAttacking = false; }
+      }
+
+      draw() {
+        const glow = this.isRaging && Math.floor(Date.now() / 70) % 2 === 0;
+
+        // Body
+        ctx.fillStyle = this.isRaging ? "#ffaa00" : COLORS.BLUE;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        // Head
+        ctx.fillStyle = "#c8b48c";
+        ctx.beginPath(); ctx.arc(this.x + 30, this.y + 20, 18, 0, Math.PI*2); ctx.fill();
+
+        // Sword
+        ctx.strokeStyle = this.isRaging ? "#ffff00" : "#ffffff";
+        ctx.lineWidth = this.isRaging ? 14 : 8;
+        const sx = this.isAttacking ? this.x + 82 : this.x + 52;
+        ctx.beginPath();
+        ctx.moveTo(this.x + 48, this.y + 48);
+        ctx.lineTo(sx, this.y + 18);
+        ctx.stroke();
+
+        // Health
+        const ratio = Math.max(0, this.health / this.maxHealth);
+        ctx.fillStyle = COLORS.RED; ctx.fillRect(this.x-10, this.y-30, 150, 15);
+        ctx.fillStyle = COLORS.GREEN; ctx.fillRect(this.x-10, this.y-30, 150*ratio, 15);
+        ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 17px Arial";
+        ctx.fillText(Math.floor(this.health), this.x+28, this.y-16);
+      }
+
+      attack(boss) {
+        const dmg = this.attack + Math.floor(Math.random()*14) - 5;
+        boss.health = Math.max(0, boss.health - dmg);
+        this.isAttacking = true;
+        this.attackTimer = 14;
+        return Math.floor(dmg);
+      }
+
+      specialAttack(boss) {
+        if (this.usedSpecial) return 0;
+        const dmg = 52 + Math.floor(Math.random()*24);
+        boss.health = Math.max(0, boss.health - dmg);
+        this.usedSpecial = true;
+        this.isRaging = true;
+        this.rageTimer = 240;
+        this.isAttacking = true;
+        this.attackTimer = 20;
+        return Math.floor(dmg);
+      }
+    }
+
+    class Boss {
+      constructor() {
+        this.x = 500; this.y = 220;
+        this.health = 280; this.maxHealth = 280;
+        this.attackCooldown = 90;
+        this.phase = 1;
+        this.isAttacking = false;
+      }
+
+      update() {
+        if (this.health < this.maxHealth * 0.4 && this.phase === 1) this.phase = 2;
+      }
+
+      draw() {
+        const flash = this.isAttacking || (this.attackCooldown < 35 && Math.floor(Date.now()/90)%2 === 0);
+        ctx.fillStyle = flash ? "#ff0088" : COLORS.PURPLE;
+        ctx.beginPath();
+        ctx.ellipse(this.x+60, this.y+55, 60, 42, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = flash ? "#ff0044" : "#640064";
+        ctx.beginPath();
+        ctx.arc(this.x+92, this.y+35, 35, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = COLORS.RED;
+        ctx.beginPath(); ctx.arc(this.x+107, this.y+30, 10, 0, Math.PI*2); ctx.fill();
+
+        // Health bar
+        const ratio = Math.max(0, this.health / this.maxHealth);
+        ctx.fillStyle = COLORS.RED; ctx.fillRect(this.x-20, this.y-45, 200, 20);
+        ctx.fillStyle = this.phase===2 ? "#ff5500" : "#c83200";
+        ctx.fillRect(this.x-20, this.y-45, 200*ratio, 20);
+
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.font = "bold 18px Arial";
+        ctx.fillText(`Shadow Dragon ${Math.floor(this.health)}`, this.x-8, this.y-50);
+      }
+
+      attack(player) {
+        let dmg = this.phase === 1 ? 15 + Math.floor(Math.random()*12) : 22 + Math.floor(Math.random()*12);
+        if (player.defending) dmg = Math.floor(dmg * 0.45);
+        else player.health = Math.max(0, player.health - dmg);
+        return {damage: Math.floor(dmg), blocked: player.defending};
+      }
+    }
+
+    let player, boss, gameState = "menu", message = "", messageTimer = 0, selectedOption = 0, screenFlash = 0;
+
+    function resetGame() {
+      player = new Player();
+      boss = new Boss();
+      gameState = "playing";
+      message = ""; messageTimer = 0; screenFlash = 0;
+    }
+
+    const keys = {};
+    window.addEventListener("keydown", e => {
+      if (gameState === "playing") {
+        if (e.key === " ") {
+          const dmg = player.attack(boss);
+          message = `You hit for ${dmg} damage!`;
+          messageTimer = 85;
+        }
+        if (e.key.toLowerCase() === "d") {
+          player.defending = true;
+          message = "Defending (hold D)";
+          messageTimer = 65;
+        }
+        if (e.key.toLowerCase() === "r") {
+          const dmg = player.specialAttack(boss);
+          if (dmg > 0) {
+            message = `RAGE STRIKE! ${dmg} DAMAGE!!!`;
+            messageTimer = 150;
+            screenFlash = 18;
+          } else {
+            message = "Rage already used!";
+            messageTimer = 80;
+          }
+        }
+      }
+
+      if (gameState === "menu") {
+        if (e.key === "ArrowUp") selectedOption = (selectedOption - 1 + 2) % 2;
+        if (e.key === "ArrowDown") selectedOption = (selectedOption + 1) % 2;
+        if (e.key === "Enter" || e.key === " ") {
+          if (selectedOption === 0) resetGame();
+          if (selectedOption === 1) window.close();
+        }
+      }
+    });
+
+    window.addEventListener("keyup", e => {
+      if (e.key.toLowerCase() === "d") player.defending = false;
+    });
+
+    function gameLoop() {
+      ctx.fillStyle = COLORS.DARK_BG;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      if (screenFlash > 0) {
+        ctx.fillStyle = `rgba(255, 220, 50, ${screenFlash/25})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        screenFlash--;
+      }
+
+      if (gameState === "menu") {
+        drawCenteredText("SHADOW DRAGON", "48px Arial", COLORS.YELLOW, 400, 150);
+        drawCenteredText("BOSS FIGHT", "48px Arial", COLORS.YELLOW, 400, 210);
+        drawCenteredText("PLAY", "34px Arial", selectedOption===0 ? "#fff" : "#888", 400, 340);
+        drawCenteredText("QUIT", "34px Arial", selectedOption===1 ? "#fff" : "#888", 400, 390);
+        drawCenteredText("↑ ↓  ENTER", "20px Arial", "#aaa", 400, 480);
+      } 
+      else if (gameState === "playing") {
+        boss.attackCooldown--;
+        if (boss.attackCooldown <= 0) {
+          const result = boss.attack(player);
+          boss.isAttacking = true;
+          message = result.blocked ? `Blocked! (${result.damage})` : `Dragon hits for ${result.damage}!`;
+          messageTimer = 100;
+          boss.attackCooldown = boss.phase === 1 ? 80 + Math.random()*40 : 50 + Math.random()*30;
+          setTimeout(() => boss.isAttacking = false, 280);
+        }
+
+        boss.update();
+        player.update();
+
+        if (boss.health <= 0) gameState = "won";
+        if (player.health <= 0) gameState = "lost";
+
+        player.draw();
+        boss.draw();
+
+        if (boss.attackCooldown < 38 && boss.attackCooldown > 8) {
+          ctx.fillStyle = "#ff0000";
+          ctx.font = "bold 26px Arial";
+          ctx.fillText("⚠ DRAGON CHARGING ⚠", 190, 155);
+        }
+
+        if (player.isRaging) {
+          drawCenteredText("RAGE MODE!", "bold 36px Arial", "#ffff00", 400, 190);
+        }
+
+        drawCenteredText("SPACE = Attack    Hold D = Defend    R = Rage Strike", "19px Arial", COLORS.WHITE, 400, HEIGHT-35);
+
+        if (messageTimer > 0) {
+          drawCenteredText(message, "26px Arial", player.isRaging ? "#ffff00" : "#ffff88", 400, 80);
+          messageTimer--;
+        }
+
+        if (boss.phase === 2) drawCenteredText("ENRAGED PHASE", "20px Arial", COLORS.RED, 400, 120);
+      } 
+      else {
+        if (gameState === "won") {
+          drawCenteredText("VICTORY!", "55px Arial", "#00ff00", 400, 220);
+          drawCenteredText("You defeated the Shadow Dragon!", "24px Arial", "#fff", 400, 280);
+        } else {
+          drawCenteredText("DEFEAT", "55px Arial", "#ff0000", 400, 220);
+          drawCenteredText("The Shadow Dragon wins...", "24px Arial", "#fff", 400, 280);
+        }
+        drawCenteredText("Press R to play again", "22px Arial", "#fff", 400, 360);
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function drawCenteredText(text, font, color, x, y) {
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textAlign = "center";
+      ctx.fillText(text, x, y);
+    }
+
+    gameLoop();
+  </script>
 </body>
 </html>
