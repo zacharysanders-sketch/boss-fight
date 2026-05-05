@@ -14,29 +14,24 @@ function resetGame() {
   screenFlash = 0;
 }
 
-const keys = {};
-
 window.addEventListener("keydown", e => {
   if (gameState === "playing") {
     if (e.key === " ") {
-      e.preventDefault();
       const dmg = player.attack(boss);
-      message = `Hit for ${dmg} damage!`;
-      messageTimer = 80;
+      message = `You hit for ${dmg} damage!`;
+      messageTimer = 90;
     }
-    
     if (e.key.toLowerCase() === "d") {
       player.defending = true;
       message = "Defending (hold D)";
-      messageTimer = 60;
+      messageTimer = 70;
     }
-    
     if (e.key.toLowerCase() === "r") {
       const dmg = player.specialAttack(boss);
       if (dmg > 0) {
         message = `RAGE STRIKE! ${dmg} DAMAGE!!!`;
-        messageTimer = 140;
-        screenFlash = 15;  // Screen flash effect
+        messageTimer = 160;
+        screenFlash = 20;
       } else {
         message = "Rage already used!";
         messageTimer = 80;
@@ -49,8 +44,11 @@ window.addEventListener("keydown", e => {
     if (e.key === "ArrowDown") selectedOption = (selectedOption + 1) % 2;
     if (e.key === "Enter" || e.key === " ") {
       if (selectedOption === 0) resetGame();
-      if (selectedOption === 1) window.close();
     }
+  }
+
+  if ((gameState === "won" || gameState === "lost") && e.key.toLowerCase() === "r") {
+    resetGame();
   }
 });
 
@@ -58,38 +56,39 @@ window.addEventListener("keyup", e => {
   if (e.key.toLowerCase() === "d") player.defending = false;
 });
 
+function drawCenteredText(text, font, color, y) {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.fillText(text, WIDTH / 2, y);
+}
+
 function gameLoop() {
   ctx.fillStyle = COLORS.DARK_BG;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   if (screenFlash > 0) {
-    ctx.fillStyle = `rgba(255, 200, 0, ${screenFlash / 20})`;
+    ctx.fillStyle = `rgba(255, 220, 100, ${screenFlash / 30})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     screenFlash--;
   }
 
   if (gameState === "menu") {
-    drawCenteredText(ctx, "SHADOW DRAGON", "48px Arial", COLORS.YELLOW, WIDTH/2, 140);
-    drawCenteredText(ctx, "BOSS FIGHT", "48px Arial", COLORS.YELLOW, WIDTH/2, 200);
-    drawCenteredText(ctx, "PLAY", "32px Arial", selectedOption === 0 ? COLORS.WHITE : "#888", WIDTH/2, 340);
-    drawCenteredText(ctx, "QUIT", "32px Arial", selectedOption === 1 ? COLORS.WHITE : "#888", WIDTH/2, 390);
-    drawCenteredText(ctx, "↑ ↓  ENTER to select", "18px Arial", "#aaa", WIDTH/2, 480);
+    drawCenteredText("SHADOW DRAGON", "48px Arial", COLORS.YELLOW, 150);
+    drawCenteredText("BOSS FIGHT", "48px Arial", COLORS.YELLOW, 210);
+    drawCenteredText("PLAY", "34px Arial", selectedOption === 0 ? "#fff" : "#888", 340);
+    drawCenteredText("QUIT", "34px Arial", selectedOption === 1 ? "#fff" : "#888", 390);
+    drawCenteredText("↑ ↓   ENTER to start", "20px Arial", "#aaa", 480);
   } 
   else if (gameState === "playing") {
     boss.attackCooldown--;
     if (boss.attackCooldown <= 0) {
       const result = boss.attack(player);
       boss.isAttacking = true;
-      
-      if (result.blocked) {
-        message = `Blocked! (${result.damage})`;
-      } else {
-        message = `Dragon hits for ${result.damage}!`;
-      }
+      message = result.blocked ? `Blocked! (${result.damage})` : `Dragon hits for ${result.damage}!`;
       messageTimer = 100;
-      
-      boss.attackCooldown = boss.phase === 1 ? 75 + Math.random()*35 : 48 + Math.random()*30;
-      setTimeout(() => boss.isAttacking = false, 250);
+      boss.attackCooldown = boss.phase === 1 ? 75 + Math.random() * 40 : 48 + Math.random() * 32;
+      setTimeout(() => boss.isAttacking = false, 280);
     }
 
     boss.update();
@@ -101,40 +100,36 @@ function gameLoop() {
     player.draw(ctx);
     boss.draw(ctx);
 
-    // Rage Warning
-    if (boss.attackCooldown < 40 && boss.attackCooldown > 8) {
+    if (boss.attackCooldown < 38 && boss.attackCooldown > 8) {
       ctx.fillStyle = "#ff0000";
       ctx.font = "bold 26px Arial";
-      ctx.fillText("⚠ DRAGON IS CHARGING ⚠", WIDTH/2 - 205, 155);
+      ctx.fillText("⚠ DRAGON IS CHARGING ⚠", WIDTH / 2, 155);
     }
 
-    // Rage Active Text
     if (player.isRaging) {
-      drawCenteredText(ctx, "RAGE MODE ACTIVATED!", "bold 32px Arial", "#ffff00", WIDTH/2, 180);
+      drawCenteredText("RAGE MODE!", "bold 36px Arial", "#ffff00", 190);
     }
 
-    drawCenteredText(ctx, "SPACE = Attack    Hold D = Defend    R = Rage Strike (once)", 
-      "18px Arial", COLORS.WHITE, WIDTH/2, HEIGHT - 35);
+    drawCenteredText("SPACE = Attack    Hold D = Defend    R = Rage Strike", "19px Arial", COLORS.WHITE, HEIGHT - 35);
 
     if (messageTimer > 0) {
-      drawCenteredText(ctx, message, "26px Arial", player.isRaging ? "#ffff00" : COLORS.YELLOW, WIDTH/2, 75);
+      drawCenteredText(message, "26px Arial", player.isRaging ? "#ffff00" : COLORS.YELLOW, 80);
       messageTimer--;
     }
 
     if (boss.phase === 2) {
-      drawCenteredText(ctx, "ENRAGED PHASE", "20px Arial", COLORS.RED, WIDTH/2, 115);
+      drawCenteredText("ENRAGED PHASE", "20px Arial", COLORS.RED, 120);
     }
   } 
-  else if (gameState === "won" || gameState === "lost") {
+  else {
     if (gameState === "won") {
-      drawCenteredText(ctx, "VICTORY!", "55px Arial", "#00ff00", WIDTH/2, HEIGHT/2 - 80);
-      drawCenteredText(ctx, "You defeated the Shadow Dragon!", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 - 10);
+      drawCenteredText("VICTORY!", "55px Arial", "#00ff00", 220);
+      drawCenteredText("You defeated the Shadow Dragon!", "24px Arial", "#fff", 280);
     } else {
-      drawCenteredText(ctx, "DEFEAT", "55px Arial", COLORS.RED, WIDTH/2, HEIGHT/2 - 80);
-      drawCenteredText(ctx, "The Shadow Dragon wins...", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 - 10);
+      drawCenteredText("DEFEAT", "55px Arial", "#ff0000", 220);
+      drawCenteredText("The Shadow Dragon wins...", "24px Arial", "#fff", 280);
     }
-    drawCenteredText(ctx, "Press R to play again", "22px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 + 60);
-    if (keys["r"] || keys["R"]) resetGame();
+    drawCenteredText("Press R to play again", "24px Arial", "#fff", 370);
   }
 
   requestAnimationFrame(gameLoop);
