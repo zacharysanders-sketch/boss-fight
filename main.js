@@ -12,7 +12,6 @@ function resetGame() {
   messageTimer = 0;
 }
 
-// Keyboard
 const keys = {};
 window.addEventListener("keydown", e => {
   keys[e.key] = true;
@@ -65,50 +64,56 @@ function gameLoop() {
 
     drawCenteredText(ctx, "PLAY", "32px Arial", playColor, WIDTH/2, 340);
     drawCenteredText(ctx, "QUIT", "32px Arial", quitColor, WIDTH/2, 390);
-
-    drawCenteredText(ctx, "↑ ↓  to select    ENTER to start", "18px Arial", "#aaa", WIDTH/2, 480);
+    drawCenteredText(ctx, "↑ ↓  ENTER to select", "18px Arial", "#aaa", WIDTH/2, 480);
   }
 
   else if (gameState === "playing") {
-    // Boss AI
+    // Boss AI + Warning
     boss.attackCooldown--;
     if (boss.attackCooldown <= 0) {
       const result = boss.attack(player);
+      boss.isAttacking = true;
+      setTimeout(() => boss.isAttacking = false, 300);
+
       if (result.blocked) {
         message = `Dragon fire blocked! ${result.damage} absorbed.`;
       } else {
         message = `Dragon hits you for ${result.damage} damage!`;
       }
       messageTimer = 100;
-      boss.attackCooldown = boss.phase === 1 ? 
-        45 + Math.random() * 30 : 30 + Math.random() * 25;
+      boss.attackCooldown = boss.phase === 1 ? 55 + Math.random() * 35 : 38 + Math.random() * 25;
     }
 
     boss.update();
 
-    // Animation
     if (player.isAttacking) {
       player.attackTimer--;
       if (player.attackTimer <= 0) player.isAttacking = false;
     }
 
-    // Win / Lose
     if (boss.health <= 0) gameState = "won";
     if (player.health <= 0) gameState = "lost";
 
     player.draw(ctx);
     boss.draw(ctx);
 
-    drawCenteredText(ctx, "SPACE = Attack    D = Defend    R = Special (once)", 
+    // Attack Warning
+    if (boss.attackCooldown < 35) {
+      ctx.fillStyle = "#ff0000";
+      ctx.font = "bold 22px Arial";
+      ctx.fillText("⚠ DRAGON IS CHARGING ⚠", WIDTH/2 - 160, 160);
+    }
+
+    drawCenteredText(ctx, "SPACE = Attack    D = Defend    R = Special", 
       "18px Arial", COLORS.WHITE, WIDTH/2, HEIGHT - 30);
 
     if (messageTimer > 0) {
-      drawCenteredText(ctx, message, "24px Arial", COLORS.YELLOW, WIDTH/2, 90);
+      drawCenteredText(ctx, message, "24px Arial", COLORS.YELLOW, WIDTH/2, 80);
       messageTimer--;
     }
 
     if (boss.phase === 2) {
-      drawCenteredText(ctx, "ENRAGED PHASE - Dragon is faster!", "20px Arial", COLORS.RED, WIDTH/2, 130);
+      drawCenteredText(ctx, "ENRAGED PHASE", "20px Arial", COLORS.RED, WIDTH/2, 115);
     }
   }
 
