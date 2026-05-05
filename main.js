@@ -26,17 +26,17 @@ window.addEventListener("keydown", e => {
   }
 
   if (gameState === "playing") {
-    if (e.key === " ") {
+    if (e.key === " ") {                    // Normal Attack
       const dmg = player.attack(boss);
       message = `You slash for ${dmg} damage!`;
-      messageTimer = 90;
+      messageTimer = 80;
     }
-    if (e.key.toLowerCase() === "d") {
+    if (e.key.toLowerCase() === "d") {      // Defend - now properly timed
       player.defending = true;
-      message = "Defending! Next hit reduced.";
-      messageTimer = 60;
+      message = "Defending! (Next hit reduced)";
+      messageTimer = 70;
     }
-    if (e.key.toLowerCase() === "r") {
+    if (e.key.toLowerCase() === "r") {      // Special
       const dmg = player.specialAttack(boss);
       if (dmg > 0) {
         message = `RAGE STRIKE! ${dmg} damage!!`;
@@ -49,7 +49,14 @@ window.addEventListener("keydown", e => {
   }
 });
 
-window.addEventListener("keyup", e => keys[e.key] = false);
+window.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  
+  // Reset defending when key is released
+  if (e.key.toLowerCase() === "d") {
+    player.defending = false;
+  }
+});
 
 function gameLoop() {
   ctx.fillStyle = COLORS.DARK_BG;
@@ -68,43 +75,52 @@ function gameLoop() {
   }
 
   else if (gameState === "playing") {
-    // Boss AI + Warning
+    // === Boss Attack Logic ===
     boss.attackCooldown--;
+    
     if (boss.attackCooldown <= 0) {
       const result = boss.attack(player);
       boss.isAttacking = true;
-      setTimeout(() => boss.isAttacking = false, 300);
-
+      
       if (result.blocked) {
-        message = `Dragon fire blocked! ${result.damage} absorbed.`;
+        message = `Dragon attack blocked! (${result.damage} dmg)`;
       } else {
         message = `Dragon hits you for ${result.damage} damage!`;
       }
       messageTimer = 100;
-      boss.attackCooldown = boss.phase === 1 ? 55 + Math.random() * 35 : 38 + Math.random() * 25;
+
+      // Reset cooldown
+      boss.attackCooldown = boss.phase === 1 ? 
+        70 + Math.random() * 40 : 45 + Math.random() * 35;
+
+      // Flash effect ends quickly
+      setTimeout(() => { if (boss) boss.isAttacking = false; }, 280);
     }
 
     boss.update();
 
+    // Player attack animation
     if (player.isAttacking) {
       player.attackTimer--;
       if (player.attackTimer <= 0) player.isAttacking = false;
     }
 
+    // Win / Lose
     if (boss.health <= 0) gameState = "won";
     if (player.health <= 0) gameState = "lost";
 
+    // Draw everything
     player.draw(ctx);
     boss.draw(ctx);
 
-    // Attack Warning
-    if (boss.attackCooldown < 35) {
+    // === Warning System ===
+    if (boss.attackCooldown < 38 && boss.attackCooldown > 5) {
       ctx.fillStyle = "#ff0000";
-      ctx.font = "bold 22px Arial";
-      ctx.fillText("⚠ DRAGON IS CHARGING ⚠", WIDTH/2 - 160, 160);
+      ctx.font = "bold 26px Arial";
+      ctx.fillText("⚠ DRAGON CHARGING ATTACK ⚠", WIDTH/2 - 210, 155);
     }
 
-    drawCenteredText(ctx, "SPACE = Attack    D = Defend    R = Special", 
+    drawCenteredText(ctx, "SPACE = Attack    D = Hold to Defend    R = Special (once)", 
       "18px Arial", COLORS.WHITE, WIDTH/2, HEIGHT - 30);
 
     if (messageTimer > 0) {
@@ -113,21 +129,20 @@ function gameLoop() {
     }
 
     if (boss.phase === 2) {
-      drawCenteredText(ctx, "ENRAGED PHASE", "20px Arial", COLORS.RED, WIDTH/2, 115);
+      drawCenteredText(ctx, "ENRAGED PHASE - Faster Attacks!", "20px Arial", COLORS.RED, WIDTH/2, 115);
     }
   }
 
-  else if (gameState === "won") {
-    drawCenteredText(ctx, "VICTORY!", "52px Arial", "#00ff00", WIDTH/2, HEIGHT/2 - 60);
-    drawCenteredText(ctx, "You defeated the Shadow Dragon!", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2);
-    drawCenteredText(ctx, "Press R to play again", "20px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 + 60);
-    if (keys["r"] || keys["R"]) resetGame();
-  }
-
-  else if (gameState === "lost") {
-    drawCenteredText(ctx, "DEFEAT", "52px Arial", COLORS.RED, WIDTH/2, HEIGHT/2 - 60);
-    drawCenteredText(ctx, "The Shadow Dragon wins...", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2);
-    drawCenteredText(ctx, "Press R to try again", "20px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 + 60);
+  else if (gameState === "won" || gameState === "lost") {
+    if (gameState === "won") {
+      drawCenteredText(ctx, "VICTORY!", "52px Arial", "#00ff00", WIDTH/2, HEIGHT/2 - 70);
+      drawCenteredText(ctx, "You defeated the Shadow Dragon!", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2);
+    } else {
+      drawCenteredText(ctx, "DEFEAT", "52px Arial", COLORS.RED, WIDTH/2, HEIGHT/2 - 70);
+      drawCenteredText(ctx, "The Shadow Dragon wins...", "24px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2);
+    }
+    drawCenteredText(ctx, "Press R to play again", "20px Arial", COLORS.WHITE, WIDTH/2, HEIGHT/2 + 70);
+    
     if (keys["r"] || keys["R"]) resetGame();
   }
 
