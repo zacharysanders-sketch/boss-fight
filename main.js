@@ -1,3 +1,4 @@
+// main.js
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -14,6 +15,7 @@ function resetGame() {
   screenFlash = 0;
 }
 
+// Keyboard Controls
 window.addEventListener("keydown", e => {
   if (gameState === "playing") {
     if (e.key === " ") {
@@ -53,7 +55,7 @@ window.addEventListener("keydown", e => {
 });
 
 window.addEventListener("keyup", e => {
-  if (e.key.toLowerCase() === "d") player.defending = false;
+  if (e.key.toLowerCase() === "d" && player) player.defending = false;
 });
 
 function drawCenteredText(text, font, color, y) {
@@ -100,6 +102,7 @@ function gameLoop() {
     player.draw(ctx);
     boss.draw(ctx);
 
+    // Warning
     if (boss.attackCooldown < 38 && boss.attackCooldown > 8) {
       ctx.fillStyle = "#ff0000";
       ctx.font = "bold 26px Arial";
@@ -135,4 +138,5 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+// Start the game
 gameLoop();
