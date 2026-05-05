@@ -43,11 +43,11 @@ class Player {
 
     ctx.fillStyle = COLORS.WHITE;
     ctx.font = "bold 16px Arial";
-    ctx.fillText(`${Math.floor(this.health)}`, this.x + 25, this.y - 16);
+    ctx.fillText(`${Math.floor(this.health)}`, this.x + 28, this.y - 16);
   }
 
   attack(boss) {
-    const damage = this.attack + Math.floor(Math.random() * 14) - 5;
+    const damage = this.attack + Math.floor(Math.random() * 13) - 4; // 14-31 damage
     boss.health = Math.max(0, boss.health - damage);
     this.isAttacking = true;
     this.attackTimer = 12;
@@ -56,7 +56,7 @@ class Player {
 
   specialAttack(boss) {
     if (this.usedSpecial) return 0;
-    const damage = this.attack + 25 + Math.floor(Math.random() * 16);
+    const damage = this.attack + 28 + Math.floor(Math.random() * 18); // Big hit
     boss.health = Math.max(0, boss.health - damage);
     this.usedSpecial = true;
     this.isAttacking = true;
